@@ -6,7 +6,9 @@ import "./style.scss"
 
 import { fetchDataFromApi } from '../../utiles/api'
 import ContentWrapper from '../../components/contentWrapper/ContentWrapper'
-
+import noResults from "../../assets/no-results.png";
+import Spinner from '../../components/spinner/Spinner'
+import MovieCard from '../../components/movieCard/MovieCard'
 
 const SearchResult = () => {
   const [data, setData] = useState(null);
@@ -16,7 +18,7 @@ const SearchResult = () => {
 
   const fetchInitialData =()=>{
     setLoading(true);
-    fetchDataFromApi(`search/multi?query=${query}&page=${pageNum}`).then(
+    fetchDataFromApi(`/search/multi?query=${query}&page=${pageNum}`).then(
       (res)=>{
         setData(res);
         setPageNum((prev)=> prev+1);
@@ -25,13 +27,61 @@ const SearchResult = () => {
     )
   }
 
+  const fetchNextPageData=()=>{
+    fetchDataFromApi(`/search/multi?query=${query}&page=${pageNum}`).then(
+      (res)=>{
+        if(data?.results){
+          setData({
+            ...data, results: [...data?.results, ...res.results]
+          })
+        }else{
+          setData(res);
+        }
+        setPageNum((prev)=> prev+1);
+      }
+  )}
+
   useEffect(()=>{
+    setPageNum(1)
     fetchInitialData();
   },[query]);
 
   return (
-    <div className='searchResultPage'>
-      hey  fjsldjfalsjfajsdflasj;lfjjfs;lajfasljdfj
+    <div className='searchResultsPage'>
+      {loading && <Spinner initial={true}/>}
+      {!loading && (
+        <ContentWrapper>
+          {data?.results?.length>0 ?(
+            <>
+              <div className='pageTitle'>
+                {`Search ${data?.total_results >1? "results":"result"} of  '${query}'`}
+              </div>
+              <InfiniteScroll
+                className='content'
+                dataLength={data?.results?.length || []}
+                next={fetchNextPageData}
+                hasMore={pageNum<=data?.total_pages}
+                loader={<Spinner/>}
+              >
+                {data?.results.map((item, index)=>{
+                  if(item.media_type === "preson") return;
+                  return(
+                    <MovieCard 
+                    Key={index}
+                    data={item}
+                    fromSearch={true}
+                    />
+                  );
+                })}
+              </InfiniteScroll>
+            </>
+          ):(
+            <span className='resultNotFound'>
+              Sorry, Result Not Found!
+            </span>
+          )}
+        </ContentWrapper>
+      )}
     </div>
   )
 }
